@@ -1,5 +1,18 @@
+"""
+Travel Weather Tool
+--------------------
+shows weather and country information for any city.
+
+usage 
+    python day3_travel_info.py
+    
+requirements:
+    pip install requests, python dotenv
+    OPEN_WEATHER_API_KEY in .env file
+"""
 import requests
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,13 +29,30 @@ def get_weather(city):
 
 
 def get_country_info(country_code):
-    url = f"https://restcountries.com/v3.1/alpha/{country_code}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if isinstance(data, list):
-            return data[0]
-    return None
+    info_url = f"https://api.worldbank.org/v2/country/{country_code}?format=json"
+    pop_url = f"https://api.worldbank.org/v2/country/{country_code}/indicator/SP.POP.TOTL?format=json&mrv=1"
+
+    info_response = requests.get(info_url)
+    pop_response = requests.get(pop_url)
+
+    if info_response.status_code != 200 or pop_response.status_code != 200:
+        return None
+
+    try:
+        country = info_response.json()[1][0]
+        population = pop_response.json()[1][0]["value"] or 0
+        return {
+            "region": country["region"]["value"],
+            "capital": country["capitalCity"],
+            "population": population,
+        }
+    except (IndexError, KeyError, TypeError):
+        return None
+
+def save_to_file (data,filenames):
+    with open (filenames, "w") as f:
+        json.dump(data, f, indent =2)
+    print(f"Data saved to {filenames}") 
 
 
 def run_tool():
@@ -60,4 +90,6 @@ def run_tool():
         print(f"Population  : {population:,}")
         print(f"Currency    : {currencies}")
 
+    if weather_data:
+        save_to_file(weather_data, f"{city.lower()}_weather.json")
 run_tool()
